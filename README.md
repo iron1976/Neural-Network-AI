@@ -1,2 +1,2 @@
 # Neural-Network-AI
-A Dynamic Neural Network 
+A Dynamic Neural Network  
