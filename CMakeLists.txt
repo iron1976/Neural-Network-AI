@@ -3,10 +3,9 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-project ("Neural Network")
+project ("Neural-Network---AI")
 
 # Add source to this project's executable.
-add_executable (CMakeTarget "Neural Network.cpp" "Neural Network.h" )
-include_directories(${YOUR_DIRECTORY}/Dependencies/glmsaddass)
+add_executable (CMakeTarget "Neural Network.cpp" "Neural Network.h" ) 
 
 # TODO: Add tests and install targets if needed.
