@@ -40,38 +40,32 @@ auto derivative3 = [](auto foo) {
     };
 };  
 
+namespace NeuralNetworkSettings
+{
+    const std::vector<std::vector<double>> Input = { {0.5, 0.3} };
+    const std::vector<unsigned int> HiddenLayerSize = { 2 };
+    const std::vector<std::vector<double>> ExpectedOutput = { {0.615} };
 
-const std::vector<std::vector<double>> Input = { {0.5, 0.3} };
-const std::vector<unsigned int> HiddenLayerSize = { 2  };
-const std::vector<std::vector<double>> ExpectedOutput = { {0.615} };
+
+    //Size of std::vector<std::vector<std::vector<double>>> -> TotalLayers
+    //Size of std::vector<std::vector<double>> -> TotalNeurons
+    //Size of std::vector<double> -> TotalWeights 
+    const std::vector<std::vector<std::vector<double>>> StartWeights = std::vector<std::vector<std::vector<double>>>{
+
+    { {0.7,0.4}, {0.3,0.6}/*1,1,1, 1,1,1,1,1, 1*/},//Input-Hidden
+
+
+    { {0.55,0.45} }//Hidden-Output 
+
+    };
+}
+using namespace NeuralNetworkSettings;
+
+
+
 const unsigned int InputLayerSize = Input[0].size();
 const unsigned int OutputLayerSize = ExpectedOutput[0].size();
-const unsigned int TotalLayers = 2 + HiddenLayerSize.size();
-
-//Size of std::vector<std::vector<std::vector<double>>> -> TotalLayers
-//Size of std::vector<std::vector<double>> -> TotalNeurons
-//Size of std::vector<double> -> TotalWeights 
-const std::vector<std::vector<std::vector<double>>> StartWeights = std::vector<std::vector<std::vector<double>>>{
-
-{ {0.7,0.4}, {0.3,0.6}/*1,1,1, 1,1,1,1,1, 1*/},//Input-Hidden
- 
-
-{ {0.55,0.45} }//Hidden-Output 
-
-};
-
-//const std::vector<std::vector<double>> StartWeights = std::vector<std::vector<double>>{
-//
-//{ 0.1,0.1,0.1, 0.1,0.1,0.1, 0.1,0.1,0.1, 0.1,0.1 },//Input-Hidden
-//
-//{ 0.1,0.1,0.1 },//Hidden1-Hidden2
-//
-//{ 0.1,0.1,0.1 },//Hidden2-Hidden3
-//
-//{ 0.1,0.1,0.1 }//Hidden-Output
-//
-//
-//};
+const unsigned int TotalLayers = 2 + HiddenLayerSize.size(); 
 
 namespace Screen
 {
@@ -717,34 +711,8 @@ namespace NeuralNetwork
 
     }
 }
-
-/*
-
-        for (unsigned int j = 0; j < OutputLayerNeurons.size(); j++)//Output Neurons
-        {
-            Neuron* neuron = OutputLayerNeurons[j];
-
-            Cost = CostFormula(neuron->ActivationOutput, ExpectedOutput[DataIndex][j], j + 1);
-            double der1 = derCostFormula(neuron->ActivationOutput, ExpectedOutput[DataIndex][j], j + 1);
-            double der2 = derActivationFormula(neuron->ActivationOutput);
-            for (unsigned int i = 0; i < neuron->ConnectedNeurons.size(); i++)//Hidden Neurons-Output Neurons
-            {
-                Neuron* subNeuron = neuron->ConnectedNeurons[i];
-                double derivatives1 = der1 * der2 * subNeuron->ActivationOutput;
-                double newWeight = neuron->ConnectedNeurons[i]->OutputWeights[neuron->NeuronIndex] + -derivatives1 * LEARNING_RATE;
-                neuron->SetWeightAt(i, newWeight);
-                for (unsigned int k = 0; k < subNeuron->ConnectedNeurons.size(); k++)//Input Neurons
-                {
-                    double derivatives2 = der1 * der2 * derActivationFormula(subNeuron->ActivationOutput) * newWeight * subNeuron->ConnectedNeurons[k]->Output;
-                    double subNewWeight = subNeuron->ConnectedNeurons[k]->OutputWeights[subNeuron->NeuronIndex] + -derivatives2 * LEARNING_RATE;
-                    subNeuron->SetWeightAt(k, subNewWeight);
-                    //print("Expected: "+  s(ExpectedOutput[j])+ s(der1) + s(der2)+ s(der3) + s(derivatives2));
-                }
-            }
-            PrintCost();
-        }
-
-*/
+using namespace NeuralNetwork;
+ 
 namespace InputThread
 { 
     OutputTypeEnum Mode = OutputTypeEnum::null;
@@ -947,9 +915,35 @@ namespace InputThread
     }
 }
 
-using namespace NeuralNetwork; 
+
+void StartTeaching()
+{
+    SetScreen();
 
 
+    InitializeNeurons();
+
+
+    InputThread::Mode = (OutputTypeEnum::ShowNetValue);
+    std::thread startThread(InputThread::main);
+    for (unsigned int p = 0; ; p++)
+    {
+
+        ForwardPropagation();
+        InputThread::ModeSelected(InputThread::Mode);
+        InputThread::InputMain();
+
+
+        PrintScreen();
+
+        if (1)
+            system("pause");
+        else
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        BackPropagation();
+    } 
+}
 int main()
 {   
     SetScreen(); 
