@@ -899,7 +899,7 @@ namespace InputThread
 
 
             unsigned int maxNeuronIndex = 0; 
-            upload to github
+
             if (InputThread::SelectedNeuronLayer == 0)
                 maxNeuronIndex = InputLayerSize;
             else if (InputThread::SelectedNeuronLayer == TotalLayers - 1)
