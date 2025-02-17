@@ -1,0 +1,3 @@
+C:/C coding/Neural-Network-AI/out/build/x64-Release/CMakeFiles/CMakeTarget.dir
+C:/C coding/Neural-Network-AI/out/build/x64-Release/CMakeFiles/edit_cache.dir
+C:/C coding/Neural-Network-AI/out/build/x64-Release/CMakeFiles/rebuild_cache.dir
