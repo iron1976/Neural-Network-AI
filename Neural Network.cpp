@@ -3,8 +3,7 @@
 
 #include "Neural Network.h"
 #include <vector>
-#include "Dependencies/glm/glm.hpp"
-#include "Dependencies/glm/gtx/string_cast.hpp"
+#include <string>
 #include <algorithm>
 #include <chrono>
 #include <thread> 
@@ -16,48 +15,62 @@
 
  
 
-
-//sigmoid function f(x) = 1/(1 + e^-x)
-auto ActivationFormula = [&](double x) {
-    return 1 / (1 + exp(-x));
-};
-
-#define LEARNING_RATE (double)0.1
-const double delta = 0.0000001;
-auto derivative = [](auto foo) {
-    return [&](double x) {
-        return (foo(x + delta) - foo(x)) / delta;
+namespace Math
+{
+    //sigmoid function f(x) = 1/(1 + e^-x)
+    auto ActivationFormula = [&](double x) {
+        return 1 / (1 + exp(-x));
     };
-};
-auto derivative2 = [](auto foo) {
-    return [&](double x, double y) {
-        return (foo(x + delta, y) - foo(x,y)) / delta;
+     
+    const double delta = 0.0000001;
+    auto derivative = [](auto foo) {
+        return [&](double x) {
+            return (foo(x + delta) - foo(x)) / delta;
+        };
     };
-};
-auto derivative3 = [](auto foo) {
-    return [&](double x, double y, double z) {
-        return (foo(x + delta, y, z) - foo(x, y, z)) / delta;
+    auto derivative2 = [](auto foo) {
+        return [&](double x, double y) {
+            return (foo(x + delta, y) - foo(x, y)) / delta;
+        };
     };
-};  
+    auto derivative3 = [](auto foo) {
+        return [&](double x, double y, double z) {
+            return (foo(x + delta, y, z) - foo(x, y, z)) / delta;
+        };
+    };
+}
 
 namespace NeuralNetworkSettings
 {
-    const std::vector<std::vector<double>> Input = { {0.5, 0.3} };
-    const std::vector<unsigned int> HiddenLayerSize = { 2 };
-    const std::vector<std::vector<double>> ExpectedOutput = { {0.615} };
+    double LearningRate = (double)0.1;
+    std::vector<std::vector<double>> Input = { {0.5, 0.3} };
+    std::vector<unsigned int> HiddenLayerSize = { 2,2 };
+    std::vector<std::vector<double>> ExpectedOutput = { {0.615} };
 
 
     //Size of std::vector<std::vector<std::vector<double>>> -> TotalLayers
     //Size of std::vector<std::vector<double>> -> TotalNeurons
     //Size of std::vector<double> -> TotalWeights 
-    const std::vector<std::vector<std::vector<double>>> StartWeights = std::vector<std::vector<std::vector<double>>>{
+    std::vector<std::vector<std::vector<double>>> StartWeights = std::vector<std::vector<std::vector<double>>>{
 
-    { {0.7,0.4}, {0.3,0.6}/*1,1,1, 1,1,1,1,1, 1*/},//Input-Hidden
+    { {0.7,
+       0.4}, 
+            {0.3,
+             0.6}},//Input-Hidden
 
+    { {0.7,
+       0.4}, 
+            {0.3,
+             0.6}},//Hidden-Hidden
 
-    { {0.55,0.45} }//Hidden-Output 
+    { {0.55,
+       0.45},    }//Hidden-Output 
 
     };
+    /// <summary>
+    /// If starting weight is missing in StartWeights. Set weight to StartWeightsDefault.
+    /// </summary>
+    double StartWeightsDefault = 1.0;
 }
 using namespace NeuralNetworkSettings;
 
@@ -477,7 +490,7 @@ namespace NeuralNetwork
         }
         void ActivationFunction()
         {
-            ActivationOutput = ActivationFormula(Output);
+            ActivationOutput = Math::ActivationFormula(Output);
         }
         void InitializeWeights(const std::vector<double>* Weights)
         {   
@@ -541,14 +554,25 @@ namespace NeuralNetwork
         if (StartWeights.size() != TotalLayers - 1)
         {
             std::cout << StartWeights.size() << " " << TotalLayers;
-            throw std::invalid_argument("Sizes don't match.");
+            std::cout << "WARNING: Start Weight size has missing Layers. Setting automatically.\n";
+            //throw std::invalid_argument("Sizes don't match.");
+            StartWeights = std::vector<std::vector<std::vector<double>>>(TotalLayers - 1);
         }
 
 
         if (StartWeights[0].size() != InputLayerSize)
         {
+
             std::cout << StartWeights[0].size() << " " << InputLayerSize;
-            throw std::invalid_argument("Sizes don't match.");
+            std::cout << "WARNING: Input Layer Start Weight size has missing Layers. Setting automatically.\n";
+            //throw std::invalid_argument("Sizes don't match.");
+            StartWeights[0] = std::vector<std::vector<double>>(InputLayerSize);
+            for (unsigned int j = 0; j < StartWeights[0].size(); j++)
+            {
+                StartWeights[0][j] = std::vector<double>(HiddenLayerSize[0]);
+                for (unsigned int i = 0; i < StartWeights[0][j].size(); i++)
+                    StartWeights[0][j][i] = StartWeightsDefault;
+            }
         }
 
         for (uint32_t j = 1; j < StartWeights.size()-1; j++)
@@ -556,14 +580,24 @@ namespace NeuralNetwork
             if (StartWeights[j].size() != HiddenLayerSize[j - 1])
             {
                 std::cout << StartWeights[j].size() << " " << HiddenLayerSize[j - 1];
-                throw std::invalid_argument("Sizes don't match.");
+                std::cout << "WARNING: Hidden Layer"<< j << "Start Weight size has missing Layers. Setting automatically.\n";
+                //throw std::invalid_argument("Sizes don't match.");
+                StartWeights[j] = std::vector<std::vector<double>>(HiddenLayerSize[j-1]);
+                for (unsigned int i = 0; i < StartWeights[j].size(); i++)
+                {
+                    StartWeights[j][i] = std::vector<double>(HiddenLayerSize[j]);
+                    for (unsigned int k = 0; k < StartWeights[j][i].size(); k++)
+                        StartWeights[j][i][k] = StartWeightsDefault;
+                }
+
             } 
         }
 
         if (StartWeights[StartWeights.size()-1].size() != OutputLayerSize)
         {
             std::cout << StartWeights[StartWeights.size() - 1].size() << " " << OutputLayerSize;
-            throw std::invalid_argument("Sizes don't match.");
+            std::cout << "WARNING: Output Layer Start Weight size has missing Layers. Setting automatically.\n";
+            //throw std::invalid_argument("Sizes don't match.");
         }
 
         for (unsigned int j = 0; j < ScreenNetsInputList.size(); j++)//Setting neurons for input layers
@@ -574,7 +608,7 @@ namespace NeuralNetwork
         }
 
          
-        for (unsigned int j = 0; j < ScreenNetsHiddenList.size(); j++)//Setting neurons for hidüden layers
+        for (unsigned int j = 0; j < ScreenNetsHiddenList.size(); j++)//Setting neurons for hidden layers
         {
             if (j == 0)
                 for (unsigned int i = 0; i < ScreenNetsHiddenList[j].size(); i++)
@@ -643,8 +677,8 @@ namespace NeuralNetwork
             return c;
         };
 
-        auto derCostFormula = derivative3(CostFormula);
-        auto derActivationFormula = derivative(ActivationFormula);
+        auto derCostFormula = Math::derivative3(CostFormula);
+        auto derActivationFormula = Math::derivative(Math::ActivationFormula);
          
 
         for (unsigned int j = 0; j < OutputLayerNeurons.size(); j++)//Output Neurons
@@ -678,7 +712,7 @@ namespace NeuralNetwork
             {
                 Neuron* subNeuron = outputNeuron->ConnectedNeurons[i]; 
                 double derivatives1 = der1 * der2 * subNeuron->ActivationOutput;
-                double newWeight = outputNeuron->ConnectedNeurons[i]->OutputWeights[outputNeuron->NeuronIndex] + -derivatives1 * LEARNING_RATE; 
+                double newWeight = outputNeuron->ConnectedNeurons[i]->OutputWeights[outputNeuron->NeuronIndex] + -derivatives1 * LearningRate; 
                 newWeights1[i] = newWeight;
             } 
 
@@ -690,7 +724,7 @@ namespace NeuralNetwork
                     {
                         //                        2 der                                                         //                         left handside output(Not activation) 
                         double derivatives2 = der1 * der2 * subNeuron->OutputWeights[k] * derActivationFormula(subNeuron->ActivationOutput) * subNeuron->ConnectedNeurons[k]->Output;
-                        double subNewWeight = subNeuron->ConnectedNeurons[k]->OutputWeights[subNeuron->NeuronIndex] + -derivatives2 * LEARNING_RATE; 
+                        double subNewWeight = subNeuron->ConnectedNeurons[k]->OutputWeights[subNeuron->NeuronIndex] + -derivatives2 * LearningRate; 
                         newWeights2[i][c][k] = subNewWeight;
 
                         //print("Expected: "+  s(ExpectedOutput[j])+ s(der1) + s(der2)+ s(der3) + s(derivatives2));
@@ -915,13 +949,22 @@ namespace InputThread
     }
 }
 
+/// <summary>
+/// First Run This
+/// </summary>
+void Initialize()
+{
 
+    SetScreen(); 
+    InitializeNeurons();
+
+
+}
+/// <summary>
+/// Second Run This
+/// </summary>
 void StartTeaching()
 {
-    SetScreen();
-
-
-    InitializeNeurons();
 
 
     InputThread::Mode = (OutputTypeEnum::ShowNetValue);
@@ -946,31 +989,8 @@ void StartTeaching()
 }
 int main()
 {   
-    SetScreen(); 
-
-
-    InitializeNeurons();
-     
-
-    InputThread::Mode = (OutputTypeEnum::ShowNetValue);
-    std::thread startThread(InputThread::main);  
-    for(unsigned int p = 0; ; p++)
-    {  
-         
-        ForwardPropagation(); 
-        InputThread::ModeSelected(InputThread::Mode);
-        InputThread::InputMain();
-
-
-        PrintScreen();  
- 
-        if (1)
-            system("pause");
-        else
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        BackPropagation();
-    }
+    Initialize();
+    StartTeaching();
     return 0; 
 }
 
