@@ -9,17 +9,17 @@
 #include <conio.h>
 #include <limits>
 #include <list> 
+#include <numeric>
 
 namespace NeuralNetwork
 {
 
-    namespace NeuralNetworkSettings
+    namespace Settings
     {
-        double LearningRate = (double)1;
-        std::vector<std::vector<double>> Input = { {0.5, 0.3} };
-        std::vector<unsigned int> HiddenLayerSize = { 2,2, 2 };
-        std::vector<std::vector<double>> ExpectedOutput = { {0.615} };
-        bool ShowNetIDsInShowWeightMode = true;
+        double LearningRate = (double)0.01;
+        std::vector<std::vector<double>> Input = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
+        std::vector<std::vector<double>> ExpectedOutput = { {0}, {1}, {1}, {0} };
+        std::vector<unsigned int> HiddenLayerSize = { 2  };
 
 
         //Size of std::vector<std::vector<std::vector<double>>> -> TotalLayers
@@ -27,31 +27,39 @@ namespace NeuralNetwork
         //Size of std::vector<double> -> TotalWeights 
         std::vector<std::vector<std::vector<double>>> StartWeights = std::vector<std::vector<std::vector<double>>>{
 
-        { {0.7,
-           0.4},
-                {0.3,
-                 0.6}},//Input-Hidden
+        { {1,
+           1},
+                {1,
+                 1}},//Input-Hidden
+                  
 
-        { {0.7,
-           0.4},
-                {0.3,
-                 0.6}},//Hidden-Hidden
-        { {0.7,
-           0.4},
-                {0.3,
-                 0.6}},//Hidden-Hidden
-
-        { {0.55,
-           0.45},    }//Hidden-Output 
+        { {1,
+           1},    }//Hidden-Output 
 
         };
         /// <summary>
         /// If starting weight is missing in StartWeights. Set weight to StartWeightsDefault.
         /// </summary>
         double StartWeightsDefault = 1.0;
-    }
-    using namespace NeuralNetworkSettings;
+        bool ShowNetIDsInShowWeightMode = true;
 
+        enum KeyboardKeys : char
+        {
+            FeedForward = 'w',
+            ShowNetValues = 'a',
+            ShowNetWeights = 's',
+            ShowNetID = 'd',
+            EnterLayer = 'v',
+            EnterEpochsTarget = 'b',
+            EmptyContinue = 32,//Spacebar
+            DebugTestKey = 'g',
+
+        };
+    }
+    using namespace Settings;
+
+    #pragma region ...
+    
     namespace Math
     {
         //sigmoid function f(x) = 1/(1 + e^-x)
@@ -76,6 +84,9 @@ namespace NeuralNetwork
             };
         };
     } 
+
+
+    //set forward key untill 1000 epochs kinda typa shi
     const unsigned int InputLayerSize = Input[0].size();
     const unsigned int OutputLayerSize = ExpectedOutput[0].size();
     const unsigned int TotalLayers = 2 + HiddenLayerSize.size();
@@ -104,6 +115,7 @@ namespace NeuralNetwork
         {
             Screen::Output += logs + "\n";
         }
+        std::string KeyGuide;
         std::string CurrentMode;
         std::string ModeSelection;
         std::string StaticLogs;
@@ -179,7 +191,7 @@ namespace NeuralNetwork
                     //std::cout << "SetOutputType";
                     UpdateScreenOutput();
                 }
-                void UpdateScreenOutput()
+                void UpdateScreenOutput() 
                 {
                     if (this == nullptr)
                         throw std::invalid_argument("This net doesn't exist maybe out of bounds.");
@@ -227,8 +239,14 @@ namespace NeuralNetwork
                     std::cout << "\033[F";
                 }
             }
-            void PrintLogs()
+            void PrintNeurons()
             {
+
+                std::cout << Output << "\033[F" << "\033[F";
+            }
+            void PrintLogs()
+            { 
+                std::cout << "\033[94m" + KeyGuide + "\033[0m" << "\n";//BRIGHT_BLUE
                 if (CurrentMode.size() > 0)
                     std::cout << "\033[94m" + CurrentMode + "\033[0m" << "\n";//BRIGHT_BLUE
                 if (StaticLogs.size() > 0)
@@ -240,7 +258,7 @@ namespace NeuralNetwork
             {
                 //For colors: https://ss64.com/nt/syntax-ansi.html
                 ClearScreen();
-                std::cout << Output << "\033[F" << "\033[F";
+                PrintNeurons();
                 PrintLogs();
 
             };
@@ -388,8 +406,9 @@ namespace NeuralNetwork
     using namespace Screen;
     namespace NeuralNeurons
     {
-        class Neuron;
 
+        class Neuron;
+         
         static std::vector<Neuron*> AllLayerNeurons = std::vector<Neuron*>();
         static std::vector<Neuron*> InputLayerNeurons = std::vector<Neuron*>(InputLayerSize);
         static std::vector<std::vector<Neuron*>> HiddenLayerNeurons = ([&]() {
@@ -403,6 +422,13 @@ namespace NeuralNetwork
 
 
         static double Cost;
+        static double CostPerEpochs;
+        static double CostPerEpochsAverage;
+        static std::vector<double> CostPerEpochsList;
+        static std::vector<double> CostPerEpochsAverageList;
+
+        unsigned int BatchIndex = 0;
+        unsigned int EpochsIndex = 0;
 
         class Neuron
         {
@@ -491,6 +517,12 @@ namespace NeuralNetwork
             void ActivationFunction()
                 {
                     ActivationOutput = Math::ActivationFormula(Output);
+                    if (isnan(ActivationOutput))
+                    {
+                        std::cout << "nan value found: " << Output;
+                        throw std::invalid_argument("Nan value found!");
+                    }
+
                 }
             void InitializeWeights(const std::vector<double>* Weights)
                 {
@@ -541,7 +573,6 @@ namespace NeuralNetwork
                 }
         };
 
-        unsigned int DataIndex = 0;
         std::vector<double> CostDifference = std::vector<double>(ExpectedOutput.size());
 
         void InitializeNeurons()
@@ -555,9 +586,9 @@ namespace NeuralNetwork
             {
                 std::cout << StartWeights.size() << " " << TotalLayers;
                 std::cout << "WARNING: Start Weight size has missing Layers. Setting automatically.\n";
-                //throw std::invalid_argument("Sizes don't match.");
+                throw std::invalid_argument("Sizes don't match.");
                 StartWeights = std::vector<std::vector<std::vector<double>>>(TotalLayers - 1);
-            }
+            } 
 
 
             if (StartWeights[0].size() != InputLayerSize)
@@ -636,13 +667,49 @@ namespace NeuralNetwork
                 OutputLayerNeurons[j] = someNeuron;
             }
 
-        }
-        std::vector<double> CostValueList;
+        } 
 
         void PrintCost()
         {
-            StaticLogs = ("Loss: " + std::to_string(Cost) + " Data Index: " + std::to_string(DataIndex));
+    
+            //CostPerEpochsAvg = CostPerEpochsAvg/
+             
+            StaticLogs = 
+                "\033[97mCost Per Batch: " + std::to_string(Cost) + "\033[0m\n"
+                "\033[92mCost Per Epochs: " + std::to_string(CostPerEpochs) + "\033[0m\n"
+                "\033[93mCost Average: " + std::to_string(CostPerEpochsAverage) + "\033[0m\n"
+                "\033[96mBatch Index: " + std::to_string(BatchIndex) +"\033[0m\n"
+                "\033[91mTotal Epochs: " + std::to_string(EpochsIndex); "\033[0m";
         }
+
+        void CalculateAverageCost()
+        {  
+            CostPerEpochs = std::accumulate(CostPerEpochsList.begin(), CostPerEpochsList.end(), 0.0) / CostPerEpochsList.size();
+
+
+            CostPerEpochsAverageList.push_back(CostPerEpochs);
+            CostPerEpochsAverage = std::accumulate(CostPerEpochsAverageList.begin(), CostPerEpochsAverageList.end(), 0.0) / CostPerEpochsAverageList.size();
+
+            CostPerEpochsList.clear();
+        }
+
+        void IncreaseBatchIndex()
+        {
+
+            if (BatchIndex < Input.size()-1)
+                BatchIndex++;
+            else
+            {
+                BatchIndex = 0;
+                EpochsIndex++;
+                CalculateAverageCost();
+            }
+            for (unsigned int j = 0; j<InputLayerNeurons.size(); j++)
+            {
+                InputLayerNeurons[j]->SetOutputValueForInputNeuron(Settings::Input[BatchIndex][j]);
+            } 
+        }
+
         void ForwardPropagation()
         {
             //Disabling these 2 mfs fixing the error
@@ -670,7 +737,7 @@ namespace NeuralNetwork
                 for (unsigned int j = 0; j < n - 1; j++)
                 {
                     Neuron* neuron = OutputLayerNeurons[j];
-                    c += (neuron->ActivationOutput - ExpectedOutput[DataIndex][j]) * (neuron->ActivationOutput - ExpectedOutput[DataIndex][j]);
+                    c += (neuron->ActivationOutput - ExpectedOutput[BatchIndex][j]) * (neuron->ActivationOutput - ExpectedOutput[BatchIndex][j]);
                 }
                 c += (yExpected - y) * (yExpected - y);
                 c *= 1.0 / (double)n;
@@ -704,9 +771,10 @@ namespace NeuralNetwork
                 })();
 
 
-                Cost = CostFormula(outputNeuron->ActivationOutput, ExpectedOutput[DataIndex][j], j + 1);
-                double der1 = derCostFormula(outputNeuron->ActivationOutput, ExpectedOutput[DataIndex][j], (double)j + 1);
+                Cost = CostFormula(outputNeuron->ActivationOutput, ExpectedOutput[BatchIndex][j], j + 1);
+                double der1 = derCostFormula(outputNeuron->ActivationOutput, ExpectedOutput[BatchIndex][j], (double)j + 1);
                 double der2 = derActivationFormula(outputNeuron->ActivationOutput);
+                CostPerEpochsList.push_back(Cost);
 
                 for (unsigned int i = 0; i < outputNeuron->ConnectedNeurons.size(); i++)//Last Hidden Layer - Output Layer
                 {
@@ -740,7 +808,6 @@ namespace NeuralNetwork
                         for (unsigned int k = 0; k < subNeuron->ConnectedNeurons.size(); k++)
                             subNeuron->SetWeightAt(k, newWeights2[i][c][k]);
                     }
-                PrintCost();
             } 
         }
     }
@@ -753,7 +820,10 @@ namespace NeuralNetwork
         unsigned int SelectedNeuronLayer = 0;
         unsigned int SelectedNeuronIndex = 0;
         bool IsEnteringLayerID = false;
+        bool IsEnteringEpochsTarget = false;
+        unsigned int SelectedTargetEpochs = 0;
 
+        bool GoOneEmptyContinue = false;
 
         template<typename T>
         unsigned int GetLengthLinkedList(std::list<T>* list)
@@ -799,8 +869,8 @@ namespace NeuralNetwork
                     ScreenNetsOutputList[j]->SetOutputType(OutputTypeEnum::ShowNetValue);
 
 
-                CurrentMode = "Showing Neuron Values";
-                ModeSelection = "";
+                CurrentMode = "SHOWING NEURON VALUES";
+                ModeSelection = "Press B to enter Target Epochs.";
             }
             else if (mode == OutputTypeEnum::ShowNetWeights)
             {
@@ -846,8 +916,8 @@ namespace NeuralNetwork
                     NeuralNeurons::HiddenLayerNeurons[InputThread::SelectedNeuronLayer - 1][InputThread::SelectedNeuronIndex]->SetShowWeights();
 
                 }
-                CurrentMode = "Showing Neuron Weights For \033[92mLayer: " + std::to_string(SelectedNeuronLayer) + "\033[0m \033[95mIndex: " + std::to_string(SelectedNeuronIndex) + "\033[0m";
-                ModeSelection = "Press V to enter layer ID";
+                CurrentMode = "SHOWING NEURON WEIGHTS For \033[92mLayer: " + std::to_string(SelectedNeuronLayer) + "\033[0m \033[95mIndex: " + std::to_string(SelectedNeuronIndex) + "\033[0m";
+                ModeSelection = "Press V to enter Layer ID";
             }
             else if (mode == OutputTypeEnum::ShowNetID)
             {
@@ -863,7 +933,7 @@ namespace NeuralNetwork
                     ScreenNetsOutputList[j]->SetOutputType(OutputTypeEnum::ShowNetID);
 
 
-                CurrentMode = "Showing Neuron IDs";
+                CurrentMode = "SHOWING NEURON IDS";
                 ModeSelection = "";
             }
 
@@ -880,6 +950,7 @@ namespace NeuralNetwork
                 //PrintLinkedList(&PreviousModes);
 
             }
+         
         }
 
         void InputMain()
@@ -936,27 +1007,111 @@ namespace NeuralNetwork
 
                 InputThread::SelectedNeuronIndex = numericalInput2;
                 InputThread::IsEnteringLayerID = false;
+                GoOneEmptyContinue = true;
 
+            }
+            else if (InputThread::IsEnteringEpochsTarget)
+            {
+                unsigned int numericalInput1 = 0;
+                CurrentMode = "";
+                StaticLogs = "";
+                ModeSelection = "\033[92mEnter Epochs Target in the range of ["+std::to_string(EpochsIndex)+", " + std::to_string(UINT_MAX) + "]: \033[0m";
+                PrintLogs();
+                while (true)
+                {
+                    if (!(std::cin >> numericalInput1))
+                        std::cout << "Invalid input, please enter numbers...\n";
+                    else if (numericalInput1 == UINT_MAX)
+                        std::cout << "Out of range, please enter numbers in [" + std::to_string(EpochsIndex) + "," + std::to_string(TotalLayers - 1) + "].\n";
+                    else
+                        break;
+                    std::cin.clear();
+                    std::cin.ignore(10000, '\n');
+                }
+
+                InputThread::SelectedTargetEpochs = numericalInput1; 
+                InputThread::IsEnteringEpochsTarget = false;
+                GoOneEmptyContinue = true;
             }
         }
         void main()
         {
             while (1)
             {
-                if (GetKeyState('A') & 0x8000)
+                if (GetKeyState(toupper(KeyboardKeys::ShowNetValues)) & 0x8000)
                     Mode = (OutputTypeEnum::ShowNetValue);
-                if (GetKeyState('S') & 0x8000)
+                if (GetKeyState(toupper(KeyboardKeys::ShowNetWeights)) & 0x8000)
                     Mode = (OutputTypeEnum::ShowNetWeights);
-                if (GetKeyState('D') & 0x8000)
-                    Mode = (OutputTypeEnum::ShowNetID);
-                if (!InputThread::IsEnteringLayerID && (GetKeyState('V') & 0x8000))
-                    IsEnteringLayerID = true;
+                if (GetKeyState(toupper(KeyboardKeys::ShowNetID)) & 0x8000)
+                    Mode = (OutputTypeEnum::ShowNetID); 
+
+
+                if (!InputThread::IsEnteringLayerID && Mode == OutputTypeEnum::ShowNetWeights && (GetKeyState(toupper(KeyboardKeys::EnterLayer)) & 0x8000))
+                    InputThread::IsEnteringLayerID = true;
+
+                if (!InputThread::IsEnteringEpochsTarget && Mode == OutputTypeEnum::ShowNetValue && (GetKeyState(toupper(KeyboardKeys::EnterEpochsTarget)) & 0x8000))
+                    InputThread::IsEnteringEpochsTarget = true;
             }
+        }
+        void OneEmptyContinued()
+        {
+            GoOneEmptyContinue = false;
         }
     }
 
     /// <summary>
-    /// First Run This
+    /// Second  
+    /// </summary>
+    void StartTeaching()
+    {
+        InputThread::Mode = (OutputTypeEnum::ShowNetValue);
+        std::thread startThread(InputThread::main);
+        char key;
+        while(1)
+        {
+            InputThread::OneEmptyContinued();
+            if(EpochsIndex < InputThread::SelectedTargetEpochs || key == KeyboardKeys::FeedForward || key == toupper(KeyboardKeys::FeedForward))
+                ForwardPropagation();
+            InputThread::ModeSelected(InputThread::Mode);
+            InputThread::InputMain();
+
+
+            
+
+            if (EpochsIndex < InputThread::SelectedTargetEpochs || key == KeyboardKeys::FeedForward || key == toupper(KeyboardKeys::FeedForward))
+            {
+                BackPropagation();
+                IncreaseBatchIndex();
+            } 
+
+            PrintCost();
+            PrintScreen(); 
+            if (1)
+            {
+                while (
+                    
+                    
+                    !(
+                        InputThread::GoOneEmptyContinue
+                        ||
+                        EpochsIndex  <  InputThread::SelectedTargetEpochs 
+                        ||
+                        (key = _getch()) 
+                    || ( key != KeyboardKeys::FeedForward || key != toupper(KeyboardKeys::FeedForward)
+                        || key != KeyboardKeys::ShowNetValues || toupper(KeyboardKeys::ShowNetValues)
+                        || key != KeyboardKeys::ShowNetWeights || toupper(KeyboardKeys::ShowNetWeights)
+                        || key != KeyboardKeys::ShowNetID || toupper(KeyboardKeys::ShowNetID) 
+                        || key != KeyboardKeys::EmptyContinue
+                    ))
+                    );
+
+            }
+            else
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+    /// <summary>
+    /// Run this in main
     /// </summary>
     void Initialize()
     {
@@ -967,32 +1122,6 @@ namespace NeuralNetwork
 
 
     }
-    /// <summary>
-    /// Second Run This
-    /// </summary>
-    void StartTeaching()
-    {
-        InputThread::Mode = (OutputTypeEnum::ShowNetValue);
-        std::thread startThread(InputThread::main);
-        for (unsigned int p = 0; ; p++)
-        {
 
-            ForwardPropagation();
-            InputThread::ModeSelected(InputThread::Mode);
-            InputThread::InputMain();
-
-
-            PrintScreen();
-
-            if (1)
-                system("pause");
-            else
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-            BackPropagation();
-        }
-    }
-
-
-    // TODO: Reference additional headers your program requires here.
+    #pragma endregion 
 }
