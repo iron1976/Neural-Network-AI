@@ -3,6 +3,13 @@
 #include "Neural Network.h"
 int main()
 {   
+
+    std::cout << ";";
+
+
+
+
+
     NeuralNetwork::Initialize();
     return 0; 
 }

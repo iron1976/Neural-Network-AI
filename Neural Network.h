@@ -16,11 +16,12 @@ namespace NeuralNetwork
 
     namespace Settings
     {
-        double LearningRate = (double)0.01;
-        std::vector<std::vector<double>> Input = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
-        std::vector<std::vector<double>> ExpectedOutput = { {0}, {1}, {1}, {0} };
-        std::vector<unsigned int> HiddenLayerSize = { 2  };
+        const double LearningRate = (double)0.1;
+        const std::vector<std::vector<double>> Input = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
+        const std::vector<std::vector<double>> ExpectedOutput = { {0}, {1}, {1}, {0} }; 
+        const std::vector<unsigned int> HiddenLayerSize = { 2  };
 
+        const std::vector<double> BiasData = { 0.5, 0.5 };
 
         //Size of std::vector<std::vector<std::vector<double>>> -> TotalLayers
         //Size of std::vector<std::vector<double>> -> TotalNeurons
@@ -40,8 +41,8 @@ namespace NeuralNetwork
         /// <summary>
         /// If starting weight is missing in StartWeights. Set weight to StartWeightsDefault.
         /// </summary>
-        double StartWeightsDefault = 1.0;
-        bool ShowNetIDsInShowWeightMode = true;
+        const double StartWeightsDefault = 1.0;
+        const bool ShowNetIDsInShowWeightMode = true;
 
         enum KeyboardKeys : char
         {
@@ -85,8 +86,7 @@ namespace NeuralNetwork
         };
     } 
 
-
-    //set forward key untill 1000 epochs kinda typa shi
+     
     const unsigned int InputLayerSize = Input[0].size();
     const unsigned int OutputLayerSize = ExpectedOutput[0].size();
     const unsigned int TotalLayers = 2 + HiddenLayerSize.size();
@@ -129,46 +129,46 @@ namespace NeuralNetwork
 
             return result;
             })();
-            static std::vector<ScreenNets*> ScreenNetsOutputList = std::vector<ScreenNets*>(OutputLayerSize);
+        static std::vector<ScreenNets*> ScreenNetsOutputList = std::vector<ScreenNets*>(OutputLayerSize);
 
-            class ScreenNets
+        class ScreenNets
 
+        {
+
+        public:
+            unsigned int BaseIndex;
+            std::string NetName;
+            double Value = 0;
+            std::vector<double>* WeightValues;
+            unsigned int SelectedWeightIndex = 0;
+            OutputTypeEnum OutputType = OutputTypeEnum::ShowNetID;
+            std::string NetID;
+
+            ScreenNets(unsigned int BaseIndex, LayerTypeEnum LayerType, std::string NetID, unsigned int Index1, unsigned int Index2) : BaseIndex(BaseIndex), NetID(NetID), NetName("BaseIndex: " + std::to_string(BaseIndex))
             {
-
-            public:
-                unsigned int BaseIndex;
-                std::string NetName;
-                double Value = 0;
-                std::vector<double>* WeightValues;
-                unsigned int SelectedWeightIndex = 0;
-                OutputTypeEnum OutputType = OutputTypeEnum::ShowNetID;
-                std::string NetID;
-
-                ScreenNets(unsigned int BaseIndex, LayerTypeEnum LayerType, std::string NetID, unsigned int Index1, unsigned int Index2) : BaseIndex(BaseIndex), NetID(NetID), NetName("BaseIndex: " + std::to_string(BaseIndex))
+                if (NetID.length() != 4)
+                    throw std::invalid_argument("Net ID length isn't 4");
+                ScreenNetsAllList.push_back(this);
+                if (LayerType == LayerTypeEnum::InputLayer)
+                    ScreenNetsInputList[Index1] = (this);
+                else if (LayerType == LayerTypeEnum::HiddenLayer)
                 {
-                    if (NetID.length() != 4)
-                        throw std::invalid_argument("Net ID length isn't 4");
-                    ScreenNetsAllList.push_back(this);
-                    if (LayerType == LayerTypeEnum::InputLayer)
-                        ScreenNetsInputList[Index1] = (this);
-                    else if (LayerType == LayerTypeEnum::HiddenLayer)
-                    {
-                        ScreenNetsHiddenList[Index2][Index1] = (this);
-                    }
-                    else if (LayerType == LayerTypeEnum::OutputLayer)
-                        ScreenNetsOutputList[Index1] = (this);
+                    ScreenNetsHiddenList[Index2][Index1] = (this);
                 }
-                void SetNet(double Value)
-                {
-                    if (!IsScreenSet)
-                        throw std::invalid_argument("error");
-                    if (this == nullptr)
-                        throw std::invalid_argument("This net doesn't exist maybe out of bounds.");
+                else if (LayerType == LayerTypeEnum::OutputLayer)
+                    ScreenNetsOutputList[Index1] = (this);
+            }
+            void SetNet(double Value)
+            {
+                if (!IsScreenSet)
+                    throw std::invalid_argument("error");
+                if (this == nullptr)
+                    throw std::invalid_argument("This net doesn't exist maybe out of bounds.");
 
-                    this->Value = Value;
-                    UpdateScreenOutput();
-                }
-                void SetWeights(std::vector<double>* weightValues)
+                this->Value = Value;
+                UpdateScreenOutput();
+            }
+            void SetWeights(std::vector<double>* weightValues)
                 {
                     if (!IsScreenSet)
                         throw std::invalid_argument("error");
@@ -179,11 +179,11 @@ namespace NeuralNetwork
                     UpdateScreenOutput();
 
                 }
-                void SelectWeight(unsigned int index)
+            void SelectWeight(unsigned int index)
                 {
                     this->SelectedWeightIndex = index;
                 }
-                void SetOutputType(OutputTypeEnum outputType)
+            void SetOutputType(OutputTypeEnum outputType)
                 {
                     if (this == nullptr)
                         throw std::invalid_argument("This net doesn't exist maybe out of bounds.");
@@ -191,7 +191,7 @@ namespace NeuralNetwork
                     //std::cout << "SetOutputType";
                     UpdateScreenOutput();
                 }
-                void UpdateScreenOutput() 
+            void UpdateScreenOutput() 
                 {
                     if (this == nullptr)
                         throw std::invalid_argument("This net doesn't exist maybe out of bounds.");
@@ -226,9 +226,9 @@ namespace NeuralNetwork
                         Screen::Output = Screen::Output.substr(0, BaseIndex - 1) + somestr + Screen::Output.substr(BaseIndex - 1 + somestr.size());
                     }
                 }
-            };
+        };
 
-            void ClearScreen()
+        void ClearScreen()
             {
                 system("cls");
                 for (int i = 0; i < 30; i++) { std::cout << "\x0A"; }
@@ -239,168 +239,196 @@ namespace NeuralNetwork
                     std::cout << "\033[F";
                 }
             }
-            void PrintNeurons()
+        void PrintNeurons()
+        {
+
+            std::cout << Output << "\033[F" << "\033[F";
+        }
+        void PrintLogs()
+        { 
+            std::cout << "\033[94m" + KeyGuide + "\033[0m" << "\n";//BRIGHT_BLUE
+            if (CurrentMode.size() > 0)
+                std::cout << "\033[94m" + CurrentMode + "\033[0m" << "\n";//BRIGHT_BLUE
+            if (StaticLogs.size() > 0)
+                std::cout << "\033[92m" + StaticLogs + "\033[0m" << "\n";//BRIGHT_GREEN
+            if (ModeSelection.size() > 0)
+                std::cout << "\033[31m" + ModeSelection + "\033[0m" << "\n";//DARK_RED
+        }
+        void PrintScreen()
+        {
+            //For colors: https://ss64.com/nt/syntax-ansi.html
+            ClearScreen();
+            PrintNeurons();
+            PrintLogs();
+
+        };
+        void SetScreen()
+        {
+            //Also Input Size
+
+            //Setting Bias Screen
+
+
+            //Setting Net Screen
+            unsigned int BlockRowSize = InputLayerSize;
+            unsigned int RowSize = BlockRowSize * 4; 
+
+            std::string fullOutput = "";
+            unsigned int InputIndex = 0;
+            std::vector<unsigned int> HiddenIndex = std::vector<unsigned int>(HiddenLayerSize.size());
+            unsigned int OutputIndex = 0;
+
+            unsigned int InputStartIndex = 0;
+            std::vector<unsigned int> HiddenStartIndex = std::vector<unsigned int>(HiddenLayerSize.size());
+            for (unsigned int j = 0; j < HiddenStartIndex.size(); j++)
+                HiddenStartIndex[j] = InputLayerSize - HiddenLayerSize[j];
+            unsigned int OutputStartIndex = InputLayerSize - OutputLayerSize;
+
+
+            std::vector<bool> HiddenPair = std::vector<bool>(HiddenLayerSize.size());
+            for (unsigned int j = 0; j < HiddenPair.size(); j++)
+                HiddenPair[j] = HiddenStartIndex[j] % 2;
+
+            bool OutputPair = InputLayerSize % 2 ? !(OutputLayerSize % 2) : (OutputLayerSize % 2);
+
+             
+            for (unsigned int i = 0, TBaseIndex = 0; i < (BlockRowSize * 2)-1; i++)
             {
+                std::string oneRow = "";
 
-                std::cout << Output << "\033[F" << "\033[F";
-            }
-            void PrintLogs()
-            { 
-                std::cout << "\033[94m" + KeyGuide + "\033[0m" << "\n";//BRIGHT_BLUE
-                if (CurrentMode.size() > 0)
-                    std::cout << "\033[94m" + CurrentMode + "\033[0m" << "\n";//BRIGHT_BLUE
-                if (StaticLogs.size() > 0)
-                    std::cout << "\033[92m" + StaticLogs + "\033[0m" << "\n";//BRIGHT_GREEN
-                if (ModeSelection.size() > 0)
-                    std::cout << "\033[31m" + ModeSelection + "\033[0m" << "\n";//DARK_RED
-            }
-            void PrintScreen()
-            {
-                //For colors: https://ss64.com/nt/syntax-ansi.html
-                ClearScreen();
-                PrintNeurons();
-                PrintLogs();
-
-            };
-            void SetScreen()
-            {
-                //Also Input Size
-
-                unsigned int BlockRowSize = InputLayerSize;
-                unsigned int RowSize = BlockRowSize * 4;
-
-
-
-                std::string fullOutput = "";
-                unsigned int InputIndex = 0;
-                std::vector<unsigned int> HiddenIndex = std::vector<unsigned int>(HiddenLayerSize.size());
-                unsigned int OutputIndex = 0;
-
-                unsigned int InputStartIndex = 0;
-                std::vector<unsigned int> HiddenStartIndex = std::vector<unsigned int>(HiddenLayerSize.size());
-                for (unsigned int j = 0; j < HiddenStartIndex.size(); j++)
-                    HiddenStartIndex[j] = InputLayerSize - HiddenLayerSize[j];
-                unsigned int OutputStartIndex = InputLayerSize - OutputLayerSize;
-
-
-                std::vector<bool> HiddenPair = std::vector<bool>(HiddenLayerSize.size());
-                for (unsigned int j = 0; j < HiddenPair.size(); j++)
-                    HiddenPair[j] = HiddenStartIndex[j] % 2;
-
-                bool OutputPair = InputLayerSize % 2 ? !(OutputLayerSize % 2) : (OutputLayerSize % 2);
-
-
-                unsigned int TBaseIndex = 0;
-                for (unsigned int i = 0; i < BlockRowSize * 2; i++)
+                bool DrawInputNet = false, DrawOutputNet = false;
+                std::vector<bool> DrawHiddenNet = std::vector<bool>(HiddenLayerSize.size());
                 {
-                    std::string oneRow = "";
-
-                    bool DrawInputNet = false, DrawOutputNet = false;
-                    std::vector<bool> DrawHiddenNet = std::vector<bool>(HiddenLayerSize.size());
+                    if (i % 2 == 0)
                     {
-                        if (i % 2 == 0)
-                        {
-                            DrawInputNet = true;
-                            InputIndex++;
-                        }
-                        else
-                            DrawInputNet = false;
+                        DrawInputNet = true;
+                        InputIndex++;
                     }
-                    {
-                        for (unsigned int c = 0; c < HiddenStartIndex.size(); c++)
-                            if (i >= HiddenStartIndex[c] && HiddenIndex[c] < HiddenLayerSize[c])
-                            {
-
-                                if (i % 2 == HiddenPair[c])
-                                {
-                                    DrawHiddenNet[c] = true;
-                                    HiddenIndex[c]++;
-                                }
-
-                            }
-                    }
-
-                    {
-                        if (i >= OutputStartIndex && OutputIndex < OutputLayerSize)
-                        {
-                            if (i % 2 == OutputPair)
-                            {
-                                DrawOutputNet = true;
-                                OutputIndex++;
-                            }
-                            else
-                                DrawOutputNet = false;
-                        }
-                    }
-
-                    {//Drawing Net
-
-                        unsigned int netSizeForRow = 1;
-                        unsigned int IndexForNet = 0;
-                        oneRow = "      ";
-                        for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
-                            if ((DrawInputNet && k == 0) ||
-                                (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ||
-                                (k != 0 && DrawHiddenNet[k - 1]))
-                                oneRow += "\033[94m+------+  \033[0m    ";
-                            else
-                                oneRow += "              ";
-
-                        oneRow += "\n";
-
-                        oneRow += "      ";
-                        for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                    else
+                        DrawInputNet = false;
+                }
+                {
+                    for (unsigned int c = 0; c < HiddenStartIndex.size(); c++)
+                        if (i >= HiddenStartIndex[c] && HiddenIndex[c] < HiddenLayerSize[c])
                         {
 
-                            LayerTypeEnum LayerType = (DrawInputNet && k == 0) ? LayerTypeEnum::InputLayer : (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ? LayerTypeEnum::OutputLayer : (k != 0 && DrawHiddenNet[k - 1]) ? LayerTypeEnum::HiddenLayer : LayerTypeEnum::NonLayer;
-                            unsigned int Value = (DrawInputNet && k == 0) ? InputIndex : (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ? OutputIndex : (k != 0 && DrawHiddenNet[k - 1]) ? HiddenIndex[k - 1] : (unsigned int)-1;
-                            bool kIs2Digits = true;
-                            if (k < 10)
-                                kIs2Digits = false;
-
-                            if (Value != (unsigned int)-1)
+                            if (i % 2 == HiddenPair[c])
                             {
-                                if (Value - 1 < 10)
-                                {
-                                    if (kIs2Digits)
-                                        oneRow += "|\033[35m" + (std::string)std::to_string(k) + "_" + (std::string)std::to_string(Value - 1) + "\033[0m |      ";//Total Length: 15
-                                    else
-                                        oneRow += "| " + (std::string)std::to_string(k) + "__" + (std::string)std::to_string(Value - 1) + " |      ";//Total Length: 15
-                                }
-                                else
-                                {
-                                    if (kIs2Digits)
-                                        oneRow += "| " + (std::string)std::to_string(k) + "" + (std::string)std::to_string(Value - 1) + " |      ";//Total Length: 15
-                                    else
-                                        oneRow += "| " + (std::string)std::to_string(k) + "_" + (std::string)std::to_string(Value - 1) + " |      ";//Total Length: 15
-                                }
-                                if (Output.size() + oneRow.size() - 13 < 0)
-                                    throw std::invalid_argument("error");
-                                TBaseIndex = (Output.size() + oneRow.size() - 13);
-
-                                new ScreenNets(TBaseIndex, LayerType, oneRow.substr(oneRow.length() - 12, 4), Value - 1, k - 1);
+                                DrawHiddenNet[c] = true;
+                                HiddenIndex[c]++;
                             }
-                            else
-                                oneRow += "              ";
+
                         }
-                        oneRow += "\n";
-
-                        oneRow += "      ";
-                        for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
-                            if ((DrawInputNet && k == 0) ||
-                                (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ||
-                                (k != 0 && DrawHiddenNet[k - 1]))
-                                oneRow += "\033[35m+------+  \033[0m    ";
-                            else
-                                oneRow += "              ";
-
-                        oneRow += "\n";
-                    }
-                    Output += oneRow;
                 }
 
-                IsScreenSet = true;
+                {
+                    if (i >= OutputStartIndex && OutputIndex < OutputLayerSize)
+                    {
+                        if (i % 2 == OutputPair)
+                        {
+                            DrawOutputNet = true;
+                            OutputIndex++;
+                        }
+                        else
+                            DrawOutputNet = false;
+                    }
+                }
+                //Drawing Net
+
+                unsigned int netSizeForRow = 1;
+                unsigned int IndexForNet = 0;
+                oneRow = "      ";
+                for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                    if ((DrawInputNet && k == 0) ||
+                        (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ||
+                        (k != 0 && DrawHiddenNet[k - 1]))
+                        oneRow += "\033[94m+------+  \033[0m    ";
+                    else
+                        oneRow += "              ";
+
+                oneRow += "\n";
+
+                oneRow += "      ";
+                for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                {
+
+                    LayerTypeEnum LayerType = (DrawInputNet && k == 0) ? LayerTypeEnum::InputLayer : (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ? LayerTypeEnum::OutputLayer : (k != 0 && DrawHiddenNet[k - 1]) ? LayerTypeEnum::HiddenLayer : LayerTypeEnum::NonLayer;
+                    unsigned int Value = (DrawInputNet && k == 0) ? InputIndex : (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ? OutputIndex : (k != 0 && DrawHiddenNet[k - 1]) ? HiddenIndex[k - 1] : (unsigned int)-1;
+                    bool kIs2Digits = true;
+                    if (k < 10)
+                        kIs2Digits = false;
+
+                    if (Value != (unsigned int)-1)
+                    {
+                        if (Value - 1 < 10)
+                        {
+                            if (kIs2Digits)
+                                oneRow += "|\033[35m" + (std::string)std::to_string(k) + "_" + (std::string)std::to_string(Value - 1) + "\033[0m |      ";//Total Length: 15
+                            else
+                                oneRow += "| " + (std::string)std::to_string(k) + "__" + (std::string)std::to_string(Value - 1) + " |      ";//Total Length: 15
+                        }
+                        else
+                        {
+                            if (kIs2Digits)
+                                oneRow += "| " + (std::string)std::to_string(k) + "" + (std::string)std::to_string(Value - 1) + " |      ";//Total Length: 15
+                            else
+                                oneRow += "| " + (std::string)std::to_string(k) + "_" + (std::string)std::to_string(Value - 1) + " |      ";//Total Length: 15
+                        }
+                        if (Output.size() + oneRow.size() - 13 < 0)
+                            throw std::invalid_argument("error");
+                        TBaseIndex = (Output.size() + oneRow.size() - 13);
+
+                        new ScreenNets(TBaseIndex, LayerType, oneRow.substr(oneRow.length() - 12, 4), Value - 1, k - 1);
+                    }
+                    else
+                        oneRow += "              ";
+                }
+                oneRow += "\n";
+                oneRow += "      ";
+                for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                    if ((DrawInputNet && k == 0) ||
+                        (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ||
+                        (k != 0 && DrawHiddenNet[k - 1]))
+                        oneRow += "\033[35m+------+  \033[0m    ";
+                    else
+                        oneRow += "              ";
+
+                oneRow += "\n";
+                
+                Output += oneRow;
             }
+            Output += "       ";
+            for (int c = 0; c < 1; c++)
+            { 
+
+                for (unsigned int j = 0; j < 1; j++)
+                {
+                    for(unsigned int i = 0; i < TotalLayers-1; i++)
+                        Output += "      \033[35m*-BIAS-*\033[0m";
+                    Output += "\n";
+                    Output += "       ";
+
+                    for (unsigned int i = 0; i < TotalLayers - 1; i++)
+                    {
+                        double value = BiasData[i];
+                        bool Is2Digits = true;
+                        if (value < 1)
+                            Is2Digits = false;
+                        if (Is2Digits)
+                            Output += "      |\033[35m " + std::to_string(value).substr(0, 4) + "\033[0m |"; 
+                        else
+                            Output += "      |\033[35m " + std::to_string(value).substr(1, 4) + "\033[0m |";
+                    } 
+              
+                     
+                     
+                   // Output += "\033[35m+------+  \033[0m\n";
+                }
+            }
+            Output += "\n\n\n";
+             
+            IsScreenSet = true;
+        }
 
     }
     using namespace Screen;
@@ -459,7 +487,7 @@ namespace NeuralNetwork
 
 
             bool IsOutputSet;
-            bool IsInputORBIASNeuron;
+            bool IsInputNeuron;
 
             /// <summary>
                 /// Setting hidden layer neurons or output neuron.
@@ -468,109 +496,113 @@ namespace NeuralNetwork
                 /// <param name="Weights"></param>
                 /// <param name="NeuronLength"></param>
             Neuron(Screen::ScreenNets* ScreenNet, std::vector<Neuron*> ConnectedNeurons, std::vector<double> Weights, LayerTypeEnum LayerType, unsigned short NeuronIndex, unsigned short NeuronLayerIndex = 0)
+            {
+                if (ConnectedNeurons.size() != Weights.size())
                 {
-                    if (ConnectedNeurons.size() != Weights.size())
-                    {
-                        std::cout << "Sizes don't match: " << ConnectedNeurons.size() << " " << Weights.size();
-                        throw std::invalid_argument("Sizes don't match.");
-                    }
-                    this->ConnectedNeurons = ConnectedNeurons;
-                    this->NeuronIndex = NeuronIndex;
-                    this->NeuronLayerIndex = NeuronLayerIndex;
-                    this->ScreenNet = ScreenNet;
-                    this->IsInputORBIASNeuron = false;
-                    this->IsOutputSet = false;
-                    this->LayerType = LayerType;
-                    this->IsValid = true;
-                    this->OutputWeights = std::vector<double>();
-                    InitializeWeights(&Weights);
-                    SetWeights(&Weights);
+                    std::cout << "Sizes don't match: " << ConnectedNeurons.size() << " " << Weights.size();
+                    throw std::invalid_argument("Sizes don't match.");
                 }
+                this->ConnectedNeurons = ConnectedNeurons;
+                this->NeuronIndex = NeuronIndex;
+                this->NeuronLayerIndex = NeuronLayerIndex;
+                this->ScreenNet = ScreenNet;
+                this->IsInputNeuron = false;
+                this->IsOutputSet = false;
+                this->LayerType = LayerType;
+                this->IsValid = true;
+                this->OutputWeights = std::vector<double>();
+                InitializeWeights(&Weights);
+                SetWeights(&Weights);
+            }
 
             /// <summary>
                 /// Setting Input OR BIAS.
                 /// </summary>
                 /// <param name="Current"></param>
-            Neuron(Screen::ScreenNets* ScreenNet, double Output, LayerTypeEnum LayerType, unsigned short NeuronIndex) : ScreenNet(ScreenNet), Output(Output), LayerType(LayerType), IsInputORBIASNeuron(true), IsOutputSet(true), NeuronIndex(NeuronIndex), NeuronLayerIndex(0), IsValid(true) {
+            Neuron(Screen::ScreenNets* ScreenNet, double Output, LayerTypeEnum LayerType, unsigned short NeuronIndex) : ScreenNet(ScreenNet), Output(Output), LayerType(LayerType), IsInputNeuron(true), IsOutputSet(true), NeuronIndex(NeuronIndex), NeuronLayerIndex(0), IsValid(true) {
 
                     this->OutputWeights = std::vector<double>();
                     SetOutput();
                 }
         private:
             void SumFunction()
+            {
+                Output = 0;
+                for (unsigned int j = 0; j < ConnectedNeurons.size(); j++)
                 {
-                    Output = 0;
-                    for (unsigned int j = 0; j < ConnectedNeurons.size(); j++)
+                    Neuron* neuron = ConnectedNeurons[j];
+                    if (neuron->IsInputNeuron)
                     {
-                        Neuron* neuron = ConnectedNeurons[j];
-                        if (neuron->IsInputORBIASNeuron)
-                        {
-                            Output += neuron->Output * neuron->OutputWeights[this->NeuronIndex];
-
-                        }
-                        else
-                        {
-                            Output += neuron->ActivationOutput * neuron->OutputWeights[this->NeuronIndex];
-                        }
+                        Output += neuron->Output * neuron->OutputWeights[this->NeuronIndex];
+            
+                    }
+                    else
+                    {
+                        Output += neuron->ActivationOutput * neuron->OutputWeights[this->NeuronIndex];
                     }
                 }
+                if (this->LayerType == LayerTypeEnum::HiddenLayer)
+                    Output += BiasData[NeuronLayerIndex];
+                else if (this->LayerType == LayerTypeEnum::OutputLayer)
+                    Output += BiasData[BiasData.size() - 1];
+            }
             void ActivationFunction()
+            {
+                ActivationOutput = Math::ActivationFormula(Output);
+                if (isnan(ActivationOutput))
                 {
-                    ActivationOutput = Math::ActivationFormula(Output);
-                    if (isnan(ActivationOutput))
-                    {
-                        std::cout << "nan value found: " << Output;
-                        throw std::invalid_argument("Nan value found!");
-                    }
-
+                    std::cout << "nan value found: " << Output;
+                    throw std::invalid_argument("Nan value found!");
                 }
+            
+            }
             void InitializeWeights(const std::vector<double>* Weights)
+            {
+                for (unsigned int j = 0; j < Weights->size(); j++)
                 {
-                    for (unsigned int j = 0; j < Weights->size(); j++)
-                    {
-                        this->ConnectedNeurons[j]->OutputWeights.push_back((*Weights)[j]);
-                    }
+                    this->ConnectedNeurons[j]->OutputWeights.push_back((*Weights)[j]);
                 }
+            }
         public:
             void SetWeights(std::vector<double>* Weights)
-                {
-                    for (unsigned int j = 0; j < Weights->size(); j++)
-                        SetWeightAt(j, (*Weights)[j]);
-                }
+            {
+                for (unsigned int j = 0; j < Weights->size(); j++)
+                    SetWeightAt(j, (*Weights)[j]);
+            }
             void SetWeightAt(unsigned int j, double Value)
                 {
                     this->ConnectedNeurons[j]->OutputWeights[this->NeuronIndex] = Value;
                     this->ConnectedNeurons[j]->ScreenNet->SetWeights(&this->ConnectedNeurons[j]->OutputWeights);
                 }
             void SetShowWeights()
-                {
-                    for (unsigned int j = 0; j < this->ConnectedNeurons.size(); j++)
-                        this->ConnectedNeurons[j]->ScreenNet->SelectWeight(this->NeuronIndex);
-                }
+            {
+                for (unsigned int j = 0; j < this->ConnectedNeurons.size(); j++)
+                    this->ConnectedNeurons[j]->ScreenNet->SelectWeight(this->NeuronIndex);
+            }
             void SetOutputValueForInputNeuron(double Value)
-                {
-                    if (!IsInputORBIASNeuron)
-                        throw std::invalid_argument("This isn't Input neuron");
-
-                    Output = Value;
-                    SetOutput();
-                }
+            {
+                if (!IsInputNeuron)
+                    throw std::invalid_argument("This isn't Input neuron");
+            
+                Output = Value;
+                SetOutput();
+            }
             void SetOutput()
+            {
+                if (IsInputNeuron)
                 {
-                    if (IsInputORBIASNeuron)
-                    {
-                        ScreenNet->SetNet(Output);
-
-                    }
-                    else
-                    {
-                        IsOutputSet = false;
-                        SumFunction();
-                        ActivationFunction();
-                        IsOutputSet = true;
-                        ScreenNet->SetNet(ActivationOutput);
-                    }
+                    ScreenNet->SetNet(Output);
+            
                 }
+                else
+                {
+                    IsOutputSet = false;
+                    SumFunction();
+                    ActivationFunction();
+                    IsOutputSet = true;
+                    ScreenNet->SetNet(ActivationOutput);
+                }
+            }
         };
 
         std::vector<double> CostDifference = std::vector<double>(ExpectedOutput.size());
@@ -631,11 +663,15 @@ namespace NeuralNetwork
                 //throw std::invalid_argument("Sizes don't match.");
             }
 
+            if (BiasData.size() != TotalLayers-1)
+            {
+                throw std::invalid_argument("BiasData Sizes don't match with Total Layers.");
+            }
+
             for (unsigned int j = 0; j < ScreenNetsInputList.size(); j++)//Setting neurons for input layers
             {
-                Neuron* someNeuron = new Neuron(ScreenNetsInputList[j], Input[0][j], LayerTypeEnum::InputLayer, j);
-
-                InputLayerNeurons[j] = someNeuron;
+                InputLayerNeurons[j] = new Neuron(ScreenNetsInputList[j], Input[0][j], LayerTypeEnum::InputLayer, j);
+                 
             }
 
 
@@ -644,16 +680,14 @@ namespace NeuralNetwork
                 if (j == 0)
                     for (unsigned int i = 0; i < ScreenNetsHiddenList[j].size(); i++)
                     {
-                        Neuron* someNeuron = new Neuron(ScreenNetsHiddenList[j][i], InputLayerNeurons, StartWeights[j][i], LayerTypeEnum::HiddenLayer, i);
-
-                        HiddenLayerNeurons[j][i] = someNeuron;
+                        HiddenLayerNeurons[j][i] = new Neuron(ScreenNetsHiddenList[j][i], InputLayerNeurons, StartWeights[j][i], LayerTypeEnum::HiddenLayer, i);
+                         
                     }
                 else
                     for (unsigned int i = 0; i < ScreenNetsHiddenList[j].size(); i++)
                     {
-                        Neuron* someNeuron = new Neuron(ScreenNetsHiddenList[j][i], HiddenLayerNeurons[j - 1], StartWeights[j][i], LayerTypeEnum::HiddenLayer, i, j);
-
-                        HiddenLayerNeurons[j][i] = someNeuron;
+                        HiddenLayerNeurons[j][i] = new Neuron(ScreenNetsHiddenList[j][i], HiddenLayerNeurons[j - 1], StartWeights[j][i], LayerTypeEnum::HiddenLayer, i, j);
+                         
                     }
             }
 
@@ -662,9 +696,9 @@ namespace NeuralNetwork
 
             for (unsigned int j = 0; j < ScreenNetsOutputList.size(); j++)//Setting neurons for output layers 
             {
-                Neuron* someNeuron = new Neuron(ScreenNetsOutputList[j], HiddenLayerNeurons[HiddenLayerNeurons.size() - 1], StartWeights[StartWeights.size() - 1][j], LayerTypeEnum::OutputLayer, j);
 
-                OutputLayerNeurons[j] = someNeuron;
+                OutputLayerNeurons[j] = new Neuron(ScreenNetsOutputList[j], HiddenLayerNeurons[HiddenLayerNeurons.size() - 1], StartWeights[StartWeights.size() - 1][j], LayerTypeEnum::OutputLayer, j);
+ 
             }
 
         } 
@@ -869,7 +903,7 @@ namespace NeuralNetwork
                     ScreenNetsOutputList[j]->SetOutputType(OutputTypeEnum::ShowNetValue);
 
 
-                CurrentMode = "SHOWING NEURON VALUES";
+                CurrentMode = "\033[92mSHOWING NEURON VALUES\033[0m";
                 ModeSelection = "Press B to enter Target Epochs.";
             }
             else if (mode == OutputTypeEnum::ShowNetWeights)
@@ -916,7 +950,7 @@ namespace NeuralNetwork
                     NeuralNeurons::HiddenLayerNeurons[InputThread::SelectedNeuronLayer - 1][InputThread::SelectedNeuronIndex]->SetShowWeights();
 
                 }
-                CurrentMode = "SHOWING NEURON WEIGHTS For \033[92mLayer: " + std::to_string(SelectedNeuronLayer) + "\033[0m \033[95mIndex: " + std::to_string(SelectedNeuronIndex) + "\033[0m";
+                CurrentMode = "\033[93mSHOWING NEURON WEIGHTS\033[0m (For \033[92mLayer: " + std::to_string(SelectedNeuronLayer) + "\033[0m \033[95mIndex: " + std::to_string(SelectedNeuronIndex) + "\033[0m)";
                 ModeSelection = "Press V to enter Layer ID";
             }
             else if (mode == OutputTypeEnum::ShowNetID)
@@ -933,7 +967,7 @@ namespace NeuralNetwork
                     ScreenNetsOutputList[j]->SetOutputType(OutputTypeEnum::ShowNetID);
 
 
-                CurrentMode = "SHOWING NEURON IDS";
+                CurrentMode = "\033[97mSHOWING NEURON IDS\033[0m";
                 ModeSelection = "";
             }
 
@@ -1088,22 +1122,20 @@ namespace NeuralNetwork
             PrintScreen(); 
             if (1)
             {
-                while (
-                    
-                    
-                    !(
+                while (!(
                         InputThread::GoOneEmptyContinue
                         ||
                         EpochsIndex  <  InputThread::SelectedTargetEpochs 
                         ||
-                        (key = _getch()) 
-                    || ( key != KeyboardKeys::FeedForward || key != toupper(KeyboardKeys::FeedForward)
-                        || key != KeyboardKeys::ShowNetValues || toupper(KeyboardKeys::ShowNetValues)
-                        || key != KeyboardKeys::ShowNetWeights || toupper(KeyboardKeys::ShowNetWeights)
-                        || key != KeyboardKeys::ShowNetID || toupper(KeyboardKeys::ShowNetID) 
-                        || key != KeyboardKeys::EmptyContinue
-                    ))
-                    );
+                         ( key = _getch()) &&
+                         ( key == KeyboardKeys::FeedForward    || key == toupper(KeyboardKeys::FeedForward)
+                        || key == KeyboardKeys::ShowNetValues  || key == toupper(KeyboardKeys::ShowNetValues)
+                        || key == KeyboardKeys::ShowNetWeights || key == toupper(KeyboardKeys::ShowNetWeights)
+                        || key == KeyboardKeys::ShowNetID      || key == toupper(KeyboardKeys::ShowNetID)
+                        || key == KeyboardKeys::EnterEpochsTarget || key == toupper(KeyboardKeys::EnterEpochsTarget)
+                        || key == KeyboardKeys::EnterLayer || key == toupper(KeyboardKeys::EnterLayer)
+                        || key == KeyboardKeys::EmptyContinue
+                )));
 
             }
             else
