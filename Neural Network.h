@@ -9,33 +9,35 @@
 #include <conio.h>
 #include <limits>
 #include <list> 
-#include <numeric>
-
+#include <numeric> 
 namespace NeuralNetwork
 {
 
+    template<class T>
+    const T& clamp(const T& x, const T& lower, const T& upper) {
+        return  min(upper,  max(x, lower));
+    }
     namespace Settings
     {
         const double LearningRate = (double)0.1;
-        const std::vector<std::vector<double>> Input = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
+       const std::vector<std::vector<double>> Input = { {1,1    }, {1,1   }, {1,1  }, {1,1    }};
+      // const std::vector<std::vector<double>> Input = { {1,1 }, {1,1 }, {1,1 }, {1,1 } };
         const std::vector<std::vector<double>> ExpectedOutput = { {0}, {1}, {1}, {0} }; 
-        const std::vector<unsigned int> HiddenLayerSize = { 2  };
+        const std::vector<unsigned int> HiddenLayerSize = { 3,2   };
 
-        const std::vector<double> BiasData = { 0.5, 0.5 };
+        const std::vector<double> BiasData = { 0.0, 0.0 , 0.0 };
 
         //Size of std::vector<std::vector<std::vector<double>>> -> TotalLayers
         //Size of std::vector<std::vector<double>> -> TotalNeurons
         //Size of std::vector<double> -> TotalWeights 
         std::vector<std::vector<std::vector<double>>> StartWeights = std::vector<std::vector<std::vector<double>>>{
 
-        { {1,
-           1},
-                {1,
-                 1}},//Input-Hidden
+        { {1,1      },{1,1     },{1,1     }},//Input-Hidden
                   
 
-        { {1,
-           1},    }//Hidden-Output 
+        { {1,1 ,1     },{1,1,1     } },//Hidden-Hidden
+        { { 
+           1,1},    }//Hidden-Output 
 
         };
         /// <summary>
@@ -150,13 +152,20 @@ namespace NeuralNetwork
                     throw std::invalid_argument("Net ID length isn't 4");
                 ScreenNetsAllList.push_back(this);
                 if (LayerType == LayerTypeEnum::InputLayer)
+                {
+                    std::cout << "\n INPUT LAYER ADDED ";
                     ScreenNetsInputList[Index1] = (this);
+                }
                 else if (LayerType == LayerTypeEnum::HiddenLayer)
                 {
+                    std::cout << "\n HIDDEN LAYER ADDED ";
                     ScreenNetsHiddenList[Index2][Index1] = (this);
                 }
                 else if (LayerType == LayerTypeEnum::OutputLayer)
+                {
+                    std::cout << "\n OUTPUT LAYER ADDED ";
                     ScreenNetsOutputList[Index1] = (this);
+                }
             }
             void SetNet(double Value)
             {
@@ -270,57 +279,80 @@ namespace NeuralNetwork
 
 
             //Setting Net Screen
-            unsigned int BlockRowSize = InputLayerSize;
-            unsigned int RowSize = BlockRowSize * 4; 
+
+            unsigned int BlockRowLength = 0;
+
+
+            for (unsigned int j = 0; j < HiddenLayerSize.size(); j++)
+            {
+                unsigned int val = HiddenLayerSize[j];
+                if (BlockRowLength < val)
+                    BlockRowLength = val;
+            }
+
+            if (InputLayerSize > BlockRowLength)
+                BlockRowLength = InputLayerSize;
+            
+            if (OutputLayerSize > BlockRowLength)
+                BlockRowLength = BlockRowLength;
+            
+
+            unsigned int RowSize = BlockRowLength * 4; 
 
             std::string fullOutput = "";
             unsigned int InputIndex = 0;
             std::vector<unsigned int> HiddenIndex = std::vector<unsigned int>(HiddenLayerSize.size());
             unsigned int OutputIndex = 0;
 
-            unsigned int InputStartIndex = 0;
+            unsigned int InputStartIndex = (int)BlockRowLength - (int)InputLayerSize < 0 ? 0 : BlockRowLength - InputLayerSize;
+
             std::vector<unsigned int> HiddenStartIndex = std::vector<unsigned int>(HiddenLayerSize.size());
             for (unsigned int j = 0; j < HiddenStartIndex.size(); j++)
-                HiddenStartIndex[j] = InputLayerSize - HiddenLayerSize[j];
-            unsigned int OutputStartIndex = InputLayerSize - OutputLayerSize;
+                HiddenStartIndex[j] = (int)InputLayerSize - (int)HiddenLayerSize[j] < 0 ? 0 : BlockRowLength - HiddenLayerSize[j];
+
+            unsigned int OutputStartIndex = (int)BlockRowLength - (int)OutputLayerSize < 0 ? 0 : BlockRowLength - OutputLayerSize;
 
 
             std::vector<bool> HiddenPair = std::vector<bool>(HiddenLayerSize.size());
             for (unsigned int j = 0; j < HiddenPair.size(); j++)
                 HiddenPair[j] = HiddenStartIndex[j] % 2;
 
-            bool OutputPair = InputLayerSize % 2 ? !(OutputLayerSize % 2) : (OutputLayerSize % 2);
+            bool OutputPair = BlockRowLength % 2 ? !(OutputLayerSize % 2) : (OutputLayerSize % 2);
+            bool InputPair = BlockRowLength % 2 ? !(InputLayerSize % 2) : (InputLayerSize % 2);
 
              
-            for (unsigned int i = 0, TBaseIndex = 0; i < (BlockRowSize * 2)-1; i++)
+            for (unsigned int i = 0, TBaseIndex = 0; i < (BlockRowLength * 2)-1; i++)
             {
                 std::string oneRow = "";
 
-                bool DrawInputNet = false, DrawOutputNet = false;
-                std::vector<bool> DrawHiddenNet = std::vector<bool>(HiddenLayerSize.size());
+                bool DrawInputNet = false;
                 {
-                    if (i % 2 == 0)
+                    if (i >= InputStartIndex && InputIndex < InputLayerSize)
                     {
-                        DrawInputNet = true;
-                        InputIndex++;
+                        if (i % 2 == InputPair)
+                        {
+                            DrawInputNet = true;
+                            InputIndex++;
+                        }
+                        else
+                            DrawInputNet = false;
                     }
-                    else
-                        DrawInputNet = false;
                 }
+                std::vector<bool> DrawHiddenNet = std::vector<bool>(HiddenLayerSize.size());
                 {
                     for (unsigned int c = 0; c < HiddenStartIndex.size(); c++)
                         if (i >= HiddenStartIndex[c] && HiddenIndex[c] < HiddenLayerSize[c])
                         {
 
-                            if (i % 2 == HiddenPair[c])
+                            if (i % 2 == HiddenPair[c]  )
                             {
                                 DrawHiddenNet[c] = true;
                                 HiddenIndex[c]++;
                             }
 
                         }
-                }
-
+                } 
+                bool DrawOutputNet = false;
                 {
                     if (i >= OutputStartIndex && OutputIndex < OutputLayerSize)
                     {
@@ -333,12 +365,14 @@ namespace NeuralNetwork
                             DrawOutputNet = false;
                     }
                 }
-                //Drawing Net
 
-                unsigned int netSizeForRow = 1;
+                for (int p = 0; p < DrawHiddenNet.size(); p++)
+                    std::cout << "\n DRAW HIDDEN: " << DrawHiddenNet[p]<< "SIZE: " << DrawHiddenNet.size();
+                //Drawing Net
+                  
                 unsigned int IndexForNet = 0;
                 oneRow = "      ";
-                for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                for (unsigned int k = 0; k < TotalLayers; k++)
                     if ((DrawInputNet && k == 0) ||
                         (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ||
                         (k != 0 && DrawHiddenNet[k - 1]))
@@ -349,11 +383,28 @@ namespace NeuralNetwork
                 oneRow += "\n";
 
                 oneRow += "      ";
-                for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                for (unsigned int k = 0; k < TotalLayers; k++)
                 {
 
-                    LayerTypeEnum LayerType = (DrawInputNet && k == 0) ? LayerTypeEnum::InputLayer : (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ? LayerTypeEnum::OutputLayer : (k != 0 && DrawHiddenNet[k - 1]) ? LayerTypeEnum::HiddenLayer : LayerTypeEnum::NonLayer;
-                    unsigned int Value = (DrawInputNet && k == 0) ? InputIndex : (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ? OutputIndex : (k != 0 && DrawHiddenNet[k - 1]) ? HiddenIndex[k - 1] : (unsigned int)-1;
+                    LayerTypeEnum LayerType = LayerTypeEnum::NonLayer; 
+                    unsigned int Value = -1;
+
+                    if ((DrawInputNet && k == 0))
+                    {
+                        LayerType = LayerTypeEnum::InputLayer;
+                        Value = InputIndex;
+                    }
+                    else if (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1)
+                    {
+                        LayerType = LayerTypeEnum::OutputLayer;
+                        Value = OutputIndex;
+                    }
+                    else if (k != 0 && DrawHiddenNet[k - 1])
+                    {
+                        LayerType = LayerTypeEnum::HiddenLayer;
+                        Value = HiddenIndex[k - 1];
+                    } 
+                    
                     bool kIs2Digits = true;
                     if (k < 10)
                         kIs2Digits = false;
@@ -385,7 +436,7 @@ namespace NeuralNetwork
                 }
                 oneRow += "\n";
                 oneRow += "      ";
-                for (unsigned int k = 0; k < 2 + HiddenLayerSize.size(); k++)
+                for (unsigned int k = 0; k < TotalLayers; k++)
                     if ((DrawInputNet && k == 0) ||
                         (DrawOutputNet && k == 2 + HiddenLayerSize.size() - 1) ||
                         (k != 0 && DrawHiddenNet[k - 1]))
@@ -610,58 +661,67 @@ namespace NeuralNetwork
         void InitializeNeurons()
         {
 
+
+            for (int j = 0; j < ScreenNetsInputList.size(); j++)
+                std::cout << "\nBIG1: " << ScreenNetsInputList[j];
+            for (int j = 0; j < ScreenNetsHiddenList.size(); j++)
+                for (int i = 0; i<  ScreenNetsHiddenList[j].size(); i ++)
+                    std::cout << "\nBIG2: "<< ScreenNetsHiddenList[j][i];
+            for (int j = 0; j < ScreenNetsOutputList.size(); j++)
+                std::cout << "\nBIG3: " << ScreenNetsOutputList[j];
+             
             if (InputLayerSize != ScreenNetsInputList.size())
                 throw std::invalid_argument("Sizes don't match.");
 
 
-            if (StartWeights.size() != TotalLayers - 1)
-            {
-                std::cout << StartWeights.size() << " " << TotalLayers;
-                std::cout << "WARNING: Start Weight size has missing Layers. Setting automatically.\n";
-                throw std::invalid_argument("Sizes don't match.");
-                StartWeights = std::vector<std::vector<std::vector<double>>>(TotalLayers - 1);
-            } 
-
-
-            if (StartWeights[0].size() != InputLayerSize)
-            {
-
-                std::cout << StartWeights[0].size() << " " << InputLayerSize;
-                std::cout << "WARNING: Input Layer Start Weight size has missing Layers. Setting automatically.\n";
-                //throw std::invalid_argument("Sizes don't match.");
-                StartWeights[0] = std::vector<std::vector<double>>(InputLayerSize);
-                for (unsigned int j = 0; j < StartWeights[0].size(); j++)
-                {
-                    StartWeights[0][j] = std::vector<double>(HiddenLayerSize[0]);
-                    for (unsigned int i = 0; i < StartWeights[0][j].size(); i++)
-                        StartWeights[0][j][i] = StartWeightsDefault;
-                }
-            }
-
-            for (uint32_t j = 1; j < StartWeights.size() - 1; j++)
-            {
-                if (StartWeights[j].size() != HiddenLayerSize[j - 1])
-                {
-                    std::cout << StartWeights[j].size() << " " << HiddenLayerSize[j - 1];
-                    std::cout << "WARNING: Hidden Layer" << j << "Start Weight size has missing Layers. Setting automatically.\n";
-                    //throw std::invalid_argument("Sizes don't match.");
-                    StartWeights[j] = std::vector<std::vector<double>>(HiddenLayerSize[j - 1]);
-                    for (unsigned int i = 0; i < StartWeights[j].size(); i++)
-                    {
-                        StartWeights[j][i] = std::vector<double>(HiddenLayerSize[j]);
-                        for (unsigned int k = 0; k < StartWeights[j][i].size(); k++)
-                            StartWeights[j][i][k] = StartWeightsDefault;
-                    }
-
-                }
-            }
-
-            if (StartWeights[StartWeights.size() - 1].size() != OutputLayerSize)
-            {
-                std::cout << StartWeights[StartWeights.size() - 1].size() << " " << OutputLayerSize;
-                std::cout << "WARNING: Output Layer Start Weight size has missing Layers. Setting automatically.\n";
-                //throw std::invalid_argument("Sizes don't match.");
-            }
+            //if (StartWeights.size() != TotalLayers - 1)
+            //{
+            //    std::cout << StartWeights.size() << " " << TotalLayers;
+            //    std::cout << "WARNING: Start Weight size has missing Layers. Setting automatically.\n";
+            //    throw std::invalid_argument("Sizes don't match.");
+            //    StartWeights = std::vector<std::vector<std::vector<double>>>(TotalLayers - 1);
+            //} 
+            //
+            //
+            //if (StartWeights[0].size() != InputLayerSize)
+            //{
+            //
+            //    std::cout << StartWeights[0].size() << " " << InputLayerSize;
+            //    std::cout << "WARNING: Input Layer Start Weight size has missing Layers. Setting automatically.\n";
+            //    //throw std::invalid_argument("Sizes don't match.");
+            //    StartWeights[0] = std::vector<std::vector<double>>(InputLayerSize);
+            //    for (unsigned int j = 0; j < StartWeights[0].size(); j++)
+            //    {
+            //        StartWeights[0][j] = std::vector<double>(HiddenLayerSize[0]);
+            //        for (unsigned int i = 0; i < StartWeights[0][j].size(); i++)
+            //            StartWeights[0][j][i] = StartWeightsDefault;
+            //    }
+            //}
+            //
+            //for (uint32_t j = 1; j < StartWeights.size() - 1; j++)
+            //{
+            //    if (StartWeights[j].size() != HiddenLayerSize[j - 1])
+            //    {
+            //        std::cout << StartWeights[j].size() << " " << HiddenLayerSize[j - 1];
+            //        std::cout << "WARNING: Hidden Layer" << j << "Start Weight size has missing Layers. Setting automatically.\n";
+            //        //throw std::invalid_argument("Sizes don't match.");
+            //        StartWeights[j] = std::vector<std::vector<double>>(HiddenLayerSize[j - 1]);
+            //        for (unsigned int i = 0; i < StartWeights[j].size(); i++)
+            //        {
+            //            StartWeights[j][i] = std::vector<double>(HiddenLayerSize[j]);
+            //            for (unsigned int k = 0; k < StartWeights[j][i].size(); k++)
+            //                StartWeights[j][i][k] = StartWeightsDefault;
+            //        }
+            //
+            //    }
+            //}
+            //
+            //if (StartWeights[StartWeights.size() - 1].size() != OutputLayerSize)
+            //{
+            //    std::cout << StartWeights[StartWeights.size() - 1].size() << " " << OutputLayerSize;
+            //    std::cout << "WARNING: Output Layer Start Weight size has missing Layers. Setting automatically.\n";
+            //    //throw std::invalid_argument("Sizes don't match.");
+            //}
 
             if (BiasData.size() != TotalLayers-1)
             {
@@ -821,18 +881,19 @@ namespace NeuralNetwork
                 for (unsigned int i = HiddenLayerNeurons.size() - 1; i != (unsigned int)(-1); i--)//Hidden layer - Hidden layer or Hidden layer - Input layer 
                     for (unsigned int c = 0; c < HiddenLayerNeurons[i].size(); c++)
                     {
-                        Neuron* subNeuron = HiddenLayerNeurons[i][c];
+                        Neuron* subNeuron = HiddenLayerNeurons[i][c]; 
                         for (unsigned int k = 0; k < subNeuron->ConnectedNeurons.size(); k++)
-                        {
+                        { 
                             //                        2 der                                                         //                         left handside output(Not activation) 
                             double derivatives2 = der1 * der2 * subNeuron->OutputWeights[k] * derActivationFormula(subNeuron->ActivationOutput) * subNeuron->ConnectedNeurons[k]->Output;
                             double subNewWeight = subNeuron->ConnectedNeurons[k]->OutputWeights[subNeuron->NeuronIndex] + -derivatives2 * LearningRate;
+                            std::cout << i << " " << c << " " << k << "    "<< newWeights2.size()<< " " << newWeights2[i].size() << " " << newWeights2[i][c].size() <<  "|\n";
                             newWeights2[i][c][k] = subNewWeight;
 
                             //print("Expected: "+  s(ExpectedOutput[j])+ s(der1) + s(der2)+ s(der3) + s(derivatives2));
                         }
                     }
-
+                 
                 for (unsigned int i = 0; i < outputNeuron->ConnectedNeurons.size(); i++)//Last Hidden Layer - Output Layer 
                     outputNeuron->SetWeightAt(i, newWeights1[i]);
                 for (unsigned int i = HiddenLayerNeurons.size() - 1; i != (unsigned int)(-1); i--)//Hidden layer - Hidden layer or Hidden layer - Input layer 

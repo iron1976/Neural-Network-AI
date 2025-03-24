@@ -3,9 +3,7 @@
 #include "Neural Network.h"
 int main()
 {   
-
-    std::cout << ";";
-
+     
 
 
 
