@@ -2,14 +2,8 @@
 // 
 #include "Neural Network.h"
 int main()
-{   
-     
-
-
-
+{
 
     NeuralNetwork::Initialize();
     return 0; 
-}
-
-
+} 
